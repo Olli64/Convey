@@ -35,12 +35,6 @@ namespace Convey.WebApi
         private const string JsonContentType = "application/json";
         private static bool _bindRequestFromRoute;
 
-        private static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
-        {
-            ContractResolver = new CamelCasePropertyNamesContractResolver(),
-            Converters = {new StringEnumConverter(true)}
-        };
-
         public static IApplicationBuilder UseEndpoints(this IApplicationBuilder app, Action<IEndpointsBuilder> build,
             bool useAuthorization = true, Action<IApplicationBuilder> middleware = null)
         {
@@ -120,6 +114,11 @@ namespace Convey.WebApi
 
             builder.Services.AddTransient<IRequestDispatcher, RequestDispatcher>();
 
+            if (builder.Services.All(s => s.ServiceType != typeof(IExceptionToResponseMapper)))
+            {
+                builder.Services.AddTransient<IExceptionToResponseMapper, EmptyExceptionToResponseMapper>();
+            }
+
             return builder;
         }
 
@@ -133,17 +132,23 @@ namespace Convey.WebApi
         }
 
         public static IApplicationBuilder UseErrorHandler(this IApplicationBuilder builder)
-        {
-            builder.ApplicationServices.GetRequiredService<IExceptionToResponseMapper>();
-            
-            return builder.UseMiddleware<ErrorHandlerMiddleware>();
-        }
+            => builder.UseMiddleware<ErrorHandlerMiddleware>();
 
-        public static IApplicationBuilder UseAllForwardedHeaders(this IApplicationBuilder builder)
-            => builder.UseForwardedHeaders(new ForwardedHeadersOptions
+        public static IApplicationBuilder UseAllForwardedHeaders(this IApplicationBuilder builder,
+            bool resetKnownNetworksAndProxies = true)
+        {
+            var forwardingOptions = new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.All
-            });
+            };
+            if (resetKnownNetworksAndProxies)
+            {
+                forwardingOptions.KnownNetworks.Clear();
+                forwardingOptions.KnownProxies.Clear();
+            }
+
+            return builder.UseForwardedHeaders(forwardingOptions);
+        }
 
         public static Task<TResult> DispatchAsync<TRequest, TResult>(this HttpContext httpContext, TRequest request)
             where TRequest : class, IRequest
@@ -358,7 +363,7 @@ namespace Convey.WebApi
             }
 
             var serialized = serializer.Serialize(values.ToDictionary(k => k.Key, k => k.Value))
-                .Replace("\\\"", "\"")
+                ?.Replace("\\\"", "\"")
                 .Replace("\"{", "{")
                 .Replace("}\"", "}")
                 .Replace("\"[", "[")
@@ -395,6 +400,11 @@ namespace Convey.WebApi
             }
 
             return (T) TypeDescriptor.GetConverter(typeof(T)).ConvertFromInvariantString(data);
+        }
+        
+        private class EmptyExceptionToResponseMapper : IExceptionToResponseMapper
+        {
+            public ExceptionResponse Map(Exception exception) => null;
         }
     }
 }

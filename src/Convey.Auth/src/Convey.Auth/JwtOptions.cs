@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 
 namespace Convey.Auth
 {
     public class JwtOptions
     {
+        public bool AuthenticationDisabled { get; set; }
         public IEnumerable<string> AllowAnonymousEndpoints { get; set; }
         public CertificateOptions Certificate { get; set; }
         public string Algorithm { get; set; }
@@ -20,6 +22,7 @@ namespace Convey.Auth
         public bool RequireExpirationTime { get; set; } = true;
         public bool RequireSignedTokens { get; set; } = true;
         public int ExpiryMinutes { get; set; }
+        public TimeSpan? Expiry { get; set; }
         public string ValidAudience { get; set; }
         public IEnumerable<string> ValidAudiences { get; set; }
         public string ValidIssuer { get; set; }

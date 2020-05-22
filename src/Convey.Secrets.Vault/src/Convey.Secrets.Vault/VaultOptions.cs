@@ -13,8 +13,18 @@ namespace Convey.Secrets.Vault
         public string Password { get; set; }
         public bool RevokeLeaseOnShutdown { get; set; }
         public int RenewalsInterval { get; set; }
+        public KeyValueOptions Kv { get; set; }
         public PkiOptions Pki { get; set; }
         public IDictionary<string, LeaseOptions> Lease { get; set; }
+
+        public class KeyValueOptions
+        {
+            public bool Enabled { get; set; }
+            public int EngineVersion { get; set; } = 2;
+            public string MountPoint { get; set; } = "kv";
+            public string Path { get; set; }
+            public int? Version { get; set; }
+        }
 
         public class LeaseOptions
         {
