@@ -7,11 +7,13 @@ using Convey.Logging;
 using Convey.MessageBrokers.CQRS;
 using Convey.MessageBrokers.RabbitMQ;
 using Convey.Metrics.AppMetrics;
+using Convey.Monitoring.ApplicationInsights;
 using Convey.Persistence.Redis;
 using Convey.Tracing.Jaeger;
 using Convey.Tracing.Jaeger.RabbitMQ;
 using Convey.WebApi;
 using Conveyor.Services.Deliveries.Events.External;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
@@ -36,9 +38,16 @@ namespace Conveyor.Services.Deliveries
                         .AddRedis()
                         .AddRabbitMq(plugins: p => p.AddJaegerRabbitMqPlugin())
                         .AddMetrics()
+                        .AddMonitoring()
                         .AddWebApi()
                         .Build())
                     .Configure(app => app
+                        .Use(async (ctx, next) =>
+                        {
+                            ctx.Request.EnableBuffering();
+                            await next();
+                        })
+                        //.UseRequestResponseLogging()
                         .UseConvey()
                         .UseErrorHandler()
                         .UseEndpoints(endpoints => endpoints

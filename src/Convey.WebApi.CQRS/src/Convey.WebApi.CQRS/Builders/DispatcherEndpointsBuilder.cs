@@ -1,10 +1,13 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Convey.CQRS.Commands;
 using Convey.CQRS.Queries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using JsonSerializer = Newtonsoft.Json.JsonSerializer;
 
 namespace Convey.WebApi.CQRS.Builders
 {
@@ -49,7 +52,11 @@ namespace Convey.WebApi.CQRS.Builders
                         return;
                     }
 
-                    await ctx.Response.WriteJsonAsync(result);
+                    //await ctx.Response.WriteAsync(JsonSerializer.Serialize(result));
+                    await ctx.Response.WriteAsync(JsonConvert.SerializeObject(result));
+                    var serializer = new JsonSerializer();
+                    serializer.Serialize(ctx.Response.Body, result);
+                    //await ctx.Response.WriteJsonAsync(result);
                     return;
                 }
 

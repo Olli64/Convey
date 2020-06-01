@@ -40,8 +40,10 @@ namespace Convey.WebApi.Formatters
             var json = string.Empty;
             if (request.Body is {})
             {
-                using var streamReader = new StreamReader(request.Body);
+                var streamReader = new StreamReader(request.Body);
                 json = await streamReader.ReadToEndAsync();
+
+                request.Body.Position = 0;
             }
 
             if (string.IsNullOrWhiteSpace(json))

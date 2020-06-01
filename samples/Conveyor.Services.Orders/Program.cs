@@ -14,6 +14,7 @@ using Convey.MessageBrokers.Outbox;
 using Convey.MessageBrokers.Outbox.Mongo;
 using Convey.MessageBrokers.RabbitMQ;
 using Convey.Metrics.AppMetrics;
+using Convey.Monitoring.ApplicationInsights;
 using Convey.Persistence.MongoDB;
 using Convey.Persistence.Redis;
 using Convey.Secrets.Vault;
@@ -63,11 +64,18 @@ namespace Conveyor.Services.Orders
                         .AddRabbitMq(plugins: p => p.AddJaegerRabbitMqPlugin())
                         .AddMessageOutbox(o => o.AddMongo())
                         .AddMetrics()
+                        .AddMonitoring()
                         .AddWebApi()
                         .AddSwaggerDocs()
                         .AddWebApiSwaggerDocs()
                         .Build())
                     .Configure(app => app
+                        .Use(async (ctx, next) =>
+                        {
+                            ctx.Request.EnableBuffering();
+                            await next();
+                        })
+                        //.UseRequestResponseLogging()
                         .UseConvey()
                         .UseErrorHandler()
                         .UseRouting()

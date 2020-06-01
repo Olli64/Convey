@@ -1,11 +1,14 @@
 ﻿using System.Threading.Tasks;
 using Convey;
+using Convey.CQRS.Queries;
 using Convey.Discovery.Consul;
 using Convey.LoadBalancing.Fabio;
 using Convey.Logging;
 using Convey.Metrics.AppMetrics;
+using Convey.Monitoring.ApplicationInsights;
 using Convey.Tracing.Jaeger;
 using Convey.WebApi;
+using Convey.WebApi.CQRS;
 using Convey.WebApi.Security;
 using Conveyor.Services.Pricing.DTO;
 using Conveyor.Services.Pricing.Queries;
@@ -29,14 +32,22 @@ namespace Conveyor.Services.Pricing
                 webBuilder.ConfigureServices(services => services
                         .AddConvey()
                         .AddErrorHandler<ExceptionToResponseMapper>()
+                        .AddQueryHandlers()
+                        .AddInMemoryQueryDispatcher()
                         .AddServices()
                         .AddConsul()
                         .AddFabio()
                         .AddJaeger()
+                        .AddMonitoring()
                         .AddMetrics()
                         .AddWebApi()
                         .Build())
                     .Configure(app => app
+                        .Use(async (ctx, next) =>
+                        {
+                            ctx.Request.EnableBuffering();
+                            await next();
+                        })
                         .UseConvey()
                         .UseErrorHandler()
                         .UseJaeger()
@@ -44,15 +55,14 @@ namespace Conveyor.Services.Pricing
                         .UseCertificateAuthentication()
                         .UseAuthentication()
                         .UseAuthorization()
+                        .UseRequestResponseLogging()
                         .UseEndpoints(endpoints => endpoints
                                 .Get("", ctx => ctx.Response.WriteAsync("Pricing Service"))
                                 .Get("ping", ctx => ctx.Response.WriteAsync("pong"))
-                                .Get<GetOrderPricing>("orders/{orderId}/pricing", async (query, ctx) =>
-                                    await ctx.RequestServices.GetRequiredService<IJsonSerializer>()
-                                        .SerializeAsync(ctx.Response.Body, new PricingDto
-                                        {
-                                            OrderId = query.OrderId, TotalAmount = 20.50m
-                                        }))))
+                        )
+                        .UseDispatcherEndpoints(endpoints => endpoints
+                            .Get<GetOrderPricing, PricingDto>("orders/{orderId}/pricing"))
+                        )
                     .UseLogging();
             });
     }
